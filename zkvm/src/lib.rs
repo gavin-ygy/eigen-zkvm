@@ -26,13 +26,13 @@ fn generate_witness_and_prove<F: FieldElement>(
     mut pipeline: Pipeline<F>,
 ) -> Result<Pipeline<F>, Vec<String>> {
     let start = Instant::now();
-    log::debug!("Generating witness...");
+    log::info!("Generating witness...");
     pipeline.compute_witness()?;
     let duration = start.elapsed();
-    log::debug!("Generating witness took: {:?}", duration);
+    log::info!("Generating witness took: {:?}", duration);
 
     let start = Instant::now();
-    log::debug!("Proving ...");
+    log::info!("Proving ...");
 
     pipeline = pipeline.with_backend(
         BackendType::EStarkStarkyComposite,
@@ -40,7 +40,7 @@ fn generate_witness_and_prove<F: FieldElement>(
     );
     pipeline.compute_proof()?;
     let duration = start.elapsed();
-    log::debug!("Proving took: {:?}", duration);
+    log::info!("Proving took: {:?}", duration);
     Ok(pipeline)
 }
 
@@ -48,13 +48,13 @@ fn generate_witness_and_prove_raw<F: FieldElement>(
     mut pipeline: Pipeline<F>,
 ) -> Result<(), Vec<String>> {
     let start = Instant::now();
-    log::debug!("Generating witness...");
+    log::info!("Generating witness...");
     pipeline.compute_witness()?;
     let duration = start.elapsed();
-    log::debug!("Generating witness took: {:?}", duration);
+    log::info!("Generating witness took: {:?}", duration);
 
     let start = Instant::now();
-    log::debug!("Proving ...");
+    log::info!("Proving ...");
 
     pipeline = pipeline.with_backend(
         BackendType::EStarkStarkyComposite,
@@ -62,7 +62,7 @@ fn generate_witness_and_prove_raw<F: FieldElement>(
     );
     pipeline.compute_proof()?;
     let duration = start.elapsed();
-    log::debug!("Proving took: {:?}", duration);
+    log::info!("Proving took: {:?}", duration);
     Ok(())
 }
 
@@ -80,17 +80,17 @@ fn generate_verifier<F: FieldElement>(
     );
     pipeline.export_verification_key(&mut vw).unwrap();
 
-    log::debug!("Init CompositeVerificationKey");
+    log::info!("Init CompositeVerificationKey");
     let cvk: CompositeVerificationKey = bincode::deserialize(&vw.into_inner()?)?;
 
-    log::debug!("Init CompositeProof");
+    log::info!("Init CompositeProof");
     let proof_data = pipeline.proof().unwrap();
     let cf: CompositeProof = bincode::deserialize(proof_data)?;
 
     let full_pil = pipeline.optimized_pil().unwrap();
     let pils = split::split_pil((*full_pil).clone());
 
-    log::debug!("Generate verifier for each proof");
+    log::info!("Generate verifier for each proof");
     let mut ids = vec![];
     for (idx, (vk, machine_proof)) in cvk
         .verification_keys
@@ -107,14 +107,14 @@ fn generate_verifier<F: FieldElement>(
             task, chunk_idx, idx
         ));
 
-        log::debug!("Running proof generation to {:?}...", proof_file);
+        log::info!("Running proof generation to {:?}...", proof_file);
         fs::write(proof_file, machine_proof.proof)?;
 
         let verifier_file = Path::new(output_path).join(format!(
             "{}_chunk_{}_submachine_{}.circom",
             task, chunk_idx, idx
         ));
-        log::debug!(
+        log::info!(
             "Running circom verifier generation to {:?}...",
             verifier_file
         );
@@ -122,7 +122,7 @@ fn generate_verifier<F: FieldElement>(
 
         let vk_data = vk.as_ref().unwrap().get(&machine_proof.size).unwrap();
         let mut setup: StarkSetup<MerkleTreeGL> = serde_json::from_slice(vk_data)?;
-        log::debug!("Load StarkSetup, size={}", machine_proof.size);
+        log::info!("Load StarkSetup, size={}", machine_proof.size);
 
         // FIXME: get the sub machine PIL
         //let pil = pipeline.optimized_pil().unwrap();
@@ -180,7 +180,7 @@ fn generate_verifier<F: FieldElement>(
 }
 
 pub fn zkvm_execute_and_prove(task: &str, suite_json: String, output_path: &str) -> Result<()> {
-    log::debug!("Compiling Rust...");
+    log::info!("Compiling Rust...");
     let force_overwrite = true;
     let with_bootloader = true;
     let (asm_file_path, asm_contents) = compile_rust::<GoldilocksField>(
@@ -200,16 +200,16 @@ pub fn zkvm_execute_and_prove(task: &str, suite_json: String, output_path: &str)
         .with_prover_inputs(Default::default())
         .add_data(TEST_CHANNEL, &suite_json);
 
-    log::debug!("Computing fixed columns...");
+    log::info!("Computing fixed columns...");
     let start = Instant::now();
 
     pipeline.compute_fixed_cols().unwrap();
 
     let duration = start.elapsed();
-    log::debug!("Computing fixed columns took: {:?}", duration);
+    log::info!("Computing fixed columns took: {:?}", duration);
 
     /*
-    log::debug!("Running powdr-riscv executor in fast mode...");
+    log::info!("Running powdr-riscv executor in fast mode...");
     let start = Instant::now();
 
     let (trace, _mem) = powdr::riscv_executor::execute::<GoldilocksField>(
@@ -220,25 +220,25 @@ pub fn zkvm_execute_and_prove(task: &str, suite_json: String, output_path: &str)
         powdr::riscv_executor::ExecMode::Fast,
     );
     let duration = start.elapsed();
-    log::debug!("Fast executor took: {:?}", duration);
-    log::debug!("Trace length: {}", trace.len);
+    log::info!("Fast executor took: {:?}", duration);
+    log::info!("Trace length: {}", trace.len);
     */
 
-    log::debug!("Running powdr-riscv executor in trace mode for continuations...");
+    log::info!("Running powdr-riscv executor in trace mode for continuations...");
     let start = Instant::now();
 
     let bootloader_inputs = rust_continuations_dry_run(&mut pipeline, Default::default());
 
     let duration = start.elapsed();
-    log::debug!("Trace executor took: {:?}", duration);
+    log::info!("Trace executor took: {:?}", duration);
 
-    log::debug!("Running witness generation...");
+    log::info!("Running witness generation...");
     let start = Instant::now();
 
     rust_continuations(pipeline, generate_witness_and_prove_raw, bootloader_inputs).unwrap();
 
     let duration = start.elapsed();
-    log::debug!("Witness generation took: {:?}", duration);
+    log::info!("Witness generation took: {:?}", duration);
 
     Ok(())
 }
@@ -248,7 +248,7 @@ pub fn zkvm_generate_chunks(
     suite_json: &String,
     output_path: &str,
 ) -> Result<Vec<(Vec<GoldilocksField>, u64)>> {
-    log::debug!("Compiling Rust...");
+    log::info!("Compiling Rust...");
     let force_overwrite = true;
     let with_bootloader = true;
     let (asm_file_path, asm_contents) = compile_rust::<GoldilocksField>(
@@ -268,7 +268,7 @@ pub fn zkvm_generate_chunks(
         .with_prover_inputs(Default::default())
         .add_data(TEST_CHANNEL, suite_json);
 
-    log::debug!("Running powdr-riscv executor in fast mode...");
+    log::info!("Running powdr-riscv executor in fast mode...");
     pipeline.compute_fixed_cols().unwrap();
 
     /*
@@ -280,15 +280,15 @@ pub fn zkvm_generate_chunks(
         powdr::riscv_executor::ExecMode::Fast,
     );
 
-    log::debug!("Trace length: {}", trace.len);
+    log::info!("Trace length: {}", trace.len);
     */
-    log::debug!("Running powdr-riscv executor in trace mode for continuations...");
+    log::info!("Running powdr-riscv executor in trace mode for continuations...");
     let start = Instant::now();
 
     let bootloader_inputs = rust_continuations_dry_run(&mut pipeline, Default::default());
 
     let duration = start.elapsed();
-    log::debug!(
+    log::info!(
         "Trace executor took: {:?}, input size: {:?}",
         duration,
         bootloader_inputs.len()
@@ -305,7 +305,7 @@ pub fn zkvm_prove_only(
     i: usize,
     output_path: &str,
 ) -> Result<Vec<usize>> {
-    log::debug!("Compiling Rust...");
+    log::info!("Compiling Rust...");
     let asm_file_path = Path::new(output_path).join(format!("{}.asm", task));
 
     let pipeline = Pipeline::<GoldilocksField>::default()
@@ -314,7 +314,7 @@ pub fn zkvm_prove_only(
         .with_prover_inputs(Default::default())
         .add_data(TEST_CHANNEL, suite_json);
 
-    log::debug!("Running witness generation and proof computation...");
+    log::info!("Running witness generation and proof computation...");
     let start = Instant::now();
 
     //TODO: if we clone it, we lost the information gained from this function
@@ -331,7 +331,7 @@ pub fn zkvm_prove_only(
     let ids = generate_verifier(pipeline, output_path, task, i)?;
 
     let duration = start.elapsed();
-    log::debug!(
+    log::info!(
         "Witness generation and proof computation took: {:?}",
         duration
     );
@@ -365,7 +365,7 @@ where
         .len() as u64;
 
     let name = format!("{}_chunk_{}", task, i);
-    log::debug!("\nRunning chunk {} in {}...", i + 1, name);
+    log::info!("\nRunning chunk {} in {}...", i + 1, name);
 
     // we used to do
     //let pipeline = pipeline.with_name(name);
