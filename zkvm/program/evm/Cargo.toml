@@ -8,7 +8,7 @@ edition = "2021"
 #powdr-riscv-runtime = { git = "https://github.com/0xEigenLabs/powdr", branch = "eigen/v1" }
 
 revm = { version = "3.5.0", default-features = false }
-powdr-riscv-runtime =  { path = "../../powdr/powdr-riscv-runtime", default-features = false }
+powdr-riscv-runtime =  { path = "../../../../powdr/powdr-riscv-runtime", default-features = false }
 
 models = { git = "https://github.com/eigmax/powdr-revme", branch = "continuations", package = "models" }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive", "rc"] }
