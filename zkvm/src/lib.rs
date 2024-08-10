@@ -88,7 +88,7 @@ fn generate_verifier<F: FieldElement>(
     let cf: CompositeProof = bincode::deserialize(proof_data)?;
 
     let full_pil = pipeline.optimized_pil().unwrap();
-    let pils = split::split_pil((*full_pil).clone());
+    let pils = split::split_pil(&(*full_pil).clone());
 
     log::info!("Generate verifier for each proof");
     let mut ids = vec![];
